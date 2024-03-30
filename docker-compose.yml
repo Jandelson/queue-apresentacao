@@ -1,0 +1,59 @@
+version: "3.7"
+services:
+  app:
+    build:
+      context: ./
+      dockerfile: Dockerfile
+      image: laravel-queue
+    container_name: queue-app
+    restart: unless-stopped
+    working_dir: /var/www/
+    volumes:
+      - ./app:/var/www
+    networks:
+      - queue-app
+
+  db:
+    image: mysql:8.0
+    container_name: queue-app-db
+    restart: unless-stopped
+    ports:
+      - 3311:3306
+    environment:
+      MYSQL_DATABASE: app
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_PASSWORD: root
+      MYSQL_USER: app
+      SERVICE_TAGS: dev
+      SERVICE_NAME: mysql
+    volumes:
+      - ./mysql-data:/var/lib/mysql
+    networks:
+      - queue-app
+
+  nginx:
+    image: nginx:alpine
+    container_name: queue-app-nginx
+    restart: unless-stopped
+    ports:
+      - 8000:80
+    volumes:
+      - ./app:/var/www
+      - ./config/nginx:/etc/nginx/conf.d/
+    networks:
+      - queue-app
+  
+  supervisor:
+    build:
+      context: .
+      dockerfile: supervisor.dockerfile
+    container_name: queue-app-supervisor
+    volumes:
+      - ./app:/var/www
+    working_dir: /var/www
+    networks:
+      - queue-app
+
+networks:
+  queue-app:
+    driver: bridge
